@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        .container {
+            width: 701px;
+            font-size: 0;
+        }
+
+        .cell {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: gray;
+            border-bottom: 1px solid white;
+            border-right: 1px solid white;
+            vertical-align: middle;
+        }
+    </style>
+
+</head>
+<body>
+    <div id="container" class="container"></div>
+    <button id="save">save</button>
+
+    <script>
+        class Sorted {
+            constructor(data, compare) {
+                this.data = data;
+                this.compare = compare;
+            }
+
+            take() {
+                if (!this.data.length) {
+                    return;
+                }
+
+                let min = this.data[0];
+                let minIndex = 0;
+                for (let i = 1; i < this.data.length; i++) {
+                    if (this.compare(this.data[i], min) < 0) {
+                        min = this.data[i];
+                        minIndex = i;
+                    }
+                }
+
+                this.data[minIndex] = this.data[this.data.length - 1];
+                this.data.pop();
+                return min;
+            }
+
+            insert(v) {
+                this.data.push(v);
+            }
+
+            get length() {
+                return this.data.length;
+            }
+        }
+
+
+        var map = localStorage.map ? JSON.parse(localStorage.map) : new Array(10000).fill(0);
+        let container = document.getElementById('container');
+        function show() {
+            for(let i = 0; i < 100; i++) {
+                for(let j = 0; j < 100; j++) {
+                    let cell = document.createElement('div');
+                    cell.classList.add('cell');
+
+                    if (map[i*100 + j] === 1) {
+                        cell.style.background = 'black';
+                    }
+
+                    cell.addEventListener('mouseover', () => {
+                        if (mouse) {
+                           if (clear) {
+                            cell.style.background = '';
+                            map[i*100 + j] = 0;
+                           } else {
+                            cell.style.background = 'black';
+                            map[i*100 + j] = 1;
+                           }
+                        }
+                    });
+
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function sleep(duration) {
+          return new Promise((resolve, reject) => {
+              setTimeout(resolve, duration);
+          })
+        }
+
+        async function findPath(pointMap, start, end) {
+            let map = Object.create(pointMap);
+
+            function distance([x, y]) {
+                return (x - end[0]) ** 2 + (y - end[1]) ** 2;
+            }
+
+            let collection = new Sorted([start], (a, b) => distance(a) - distance(b));
+
+            async function insert([x, y], pre) {
+                if(map[y * 100 + x] !== 0) {
+                    return;
+                }
+
+                if(x < 0 || y < 0 || x >= 100 || y >= 100) {
+                    return;
+                }
+
+                map[100 * y + x] = pre;
+                container.children[y * 100 + x].style.background = 'lightgreen';
+                await sleep(1);
+                collection.insert([x, y]);
+            }
+
+            while(collection.length) {
+                let [x, y] = collection.take();
+                // console.log(x, y);
+                if (x === end[0] && y === end[1]) {
+                    let path = [];
+                    while (x !== start[0] || y !== start[1]) {
+                        path.push([x, y]);
+                        container.children[y * 100 + x].style.background = 'pink';
+                        [x, y] = map[y * 100 + x];
+                    }
+
+                    return path;
+                }
+                await insert([x, y + 1], [x, y]);
+                await insert([x, y - 1], [x, y]);
+                await insert([x - 1, y], [x, y]);
+                await insert([x + 1, y], [x, y]);
+                await insert([x + 1, y + 1], [x, y]);
+                await insert([x - 1, y - 1], [x, y]);
+                await insert([x - 1, y + 1], [x, y]);
+                await insert([x + 1, y - 1], [x, y]);
+            }
+
+            return null;
+        }
+
+        let mouse = false;
+        let clear = false;
+
+        document.addEventListener('mousedown', (e) => {
+            mouse = true;
+            clear = e.button === 2;
+        });
+        document.addEventListener('mouseup', () => mouse = false);
+        document.addEventListener('contextmenu', e => e.preventDefault())
+
+        document.getElementById('save').addEventListener('click', () => {
+            localStorage.map = JSON.stringify(map);
+        });
+
+        show();
+    </script>
+</body>
+</html>
